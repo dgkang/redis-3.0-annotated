@@ -170,12 +170,15 @@ void aeStop(aeEventLoop *eventLoop) {
 int aeCreateFileEvent(aeEventLoop *eventLoop, int fd, int mask,
         aeFileProc *proc, void *clientData)
 {
+    //超过eventLoop能管理的FileEvent最大值，就返回错误
+
     if (fd >= eventLoop->setsize) {
         errno = ERANGE;
         return AE_ERR;
     }
 
-    if (fd >= eventLoop->setsize) return AE_ERR;
+    if (fd >= eventLoop->setsize) return AE_ERR; //不是多余了嘛
+
 
     // 取出文件事件结构
     aeFileEvent *fe = &eventLoop->events[fd];
