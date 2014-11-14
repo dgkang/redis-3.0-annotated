@@ -30,6 +30,11 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
+/*
+    实现的Timer效率不是太高O(N)，接口清晰，直接分配最大值fd的IO事件数组，用fd,O(1)索引这些数组.
+    Timer使用链表方式存储，遍历是O(N).
+ */
+
 #include <stdio.h>
 #include <sys/time.h>
 #include <sys/types.h>
@@ -215,12 +220,13 @@ void aeDeleteFileEvent(aeEventLoop *eventLoop, int fd, int mask)
     // 未设置监听的事件类型，直接返回
     if (fe->mask == AE_NONE) return;
 
-    // 计算新掩码
+    // 计算新掩码,删除指定的mask
     fe->mask = fe->mask & (~mask);
     if (fd == eventLoop->maxfd && fe->mask == AE_NONE) {
         /* Update the max fd */
         int j;
 
+        //删除倒数连续的无用FileEvent(mask == AE_NONE)
         for (j = eventLoop->maxfd-1; j >= 0; j--)
             if (eventLoop->events[j].mask != AE_NONE) break;
         eventLoop->maxfd = j;
@@ -613,7 +619,7 @@ int aeWait(int fd, int mask, long long milliseconds) {
     if ((retval = poll(&pfd, 1, milliseconds))== 1) {
         if (pfd.revents & POLLIN) retmask |= AE_READABLE;
         if (pfd.revents & POLLOUT) retmask |= AE_WRITABLE;
-	if (pfd.revents & POLLERR) retmask |= AE_WRITABLE;
+	    if (pfd.revents & POLLERR) retmask |= AE_WRITABLE;
         if (pfd.revents & POLLHUP) retmask |= AE_WRITABLE;
         return retmask;
     } else {
